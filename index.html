@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Minimal To‑Do</title>
+    <style>
+      :root{
+        --bg: #0f1724;
+        --card: #0b1220;
+        --muted: #97a0b5;
+        --accent: #7c5cff;
+        --accent-2: #4dd0e1;
+        --glass: rgba(255,255,255,0.03);
+        --radius: 14px;
+        --shadow: 0 6px 18px rgba(2,6,23,0.6);
+      }
+      *{box-sizing:border-box}
+      html,body{height:100%}
+      body{
+        margin:0;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+        background: linear-gradient(180deg,#071025 0%, #0b1220 100%);
+        color: #e6eef8;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:40px 20px;
+      }
+      .app{
+        width:100%;
+        max-width:540px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+        border-radius: calc(var(--radius) + 6px);
+        padding:28px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(6px) saturate(120%);
+      }
+      .theme-toggle{
+        width:40px;height:40px;border-radius:10px;border:none;display:grid;place-items:center;cursor:pointer;
+        background:transparent;color:var(--muted);font-weight:700;margin-left:8px
+      }
+
+      /* Light theme overrides */
+      [data-theme="light"]{
+        --bg: #f6f8fb;
+        --card: #ffffff;
+        --muted: #64748b;
+        --accent: #6b46ff;
+        --accent-2: #0ea5a4;
+        --glass: rgba(2,6,23,0.02);
+        color: #0b1220;
+        --shadow: 0 8px 28px rgba(12,18,40,0.06);
+      }
+      [data-theme="light"] body{background: linear-gradient(180deg,#ffffff 0%, #f3f6fb 100%)}
+      header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+      h1{font-size:20px;margin:0;letter-spacing:0.2px}
+      .subtitle{color:var(--muted);font-size:13px}
+      form{display:flex;gap:12px}
+      input[type="text"]{
+        flex:1;
+        padding:12px 14px;
+        border-radius:12px;
+        border:1px solid rgba(255,255,255,0.04);
+        background:transparent;
+        color:inherit;
+        outline:none;
+        box-shadow: 0 4px 12px rgba(2,6,23,0.5) inset;
+      }
+      input[type="text"]::placeholder{color:var(--muted)}
+      button.add{
+        background: linear-gradient(180deg,var(--accent), #5b3bff);
+        color:white;
+        border:none;
+        padding:10px 16px;
+        border-radius:999px;
+        box-shadow: 0 8px 20px rgba(124,92,255,0.18);
+        cursor:pointer;
+        font-weight:600;
+      }
+      button.add:active{transform:translateY(1px)}
+      .list{margin-top:18px;display:flex;flex-direction:column;gap:10px}
+      .task{
+        display:flex;align-items:center;justify-content:space-between;
+        gap:12px;padding:12px 14px;border-radius:12px;background:var(--glass);
+        border:1px solid rgba(255,255,255,0.02);
+        box-shadow: 0 6px 14px rgba(2,6,23,0.45);
+      }
+      .task .text{flex:1;color:#eaf2ff}
+      .task .meta{color:var(--muted);font-size:12px;margin-left:10px}
+      .btn-circle{
+        width:36px;height:36px;border-radius:50%;display:inline-grid;place-items:center;border:none;cursor:pointer;
+        background:transparent;color:var(--muted);
+      }
+      .btn-delete{background:linear-gradient(180deg,#ff6b6b,#ff4c4c);color:white;width:40px;height:40px}
+      .footer{display:flex;justify-content:space-between;align-items:center;margin-top:14px;color:var(--muted);font-size:13px}
+      .count{font-weight:600;color:var(--accent-2)}
+      @media (max-width:420px){.app{padding:18px}}
+    </style>
+  </head>
+  <body>
+    <main class="app" role="application" aria-labelledby="title">
+      <header>
+        <div>
+          <h1 id="title">Minimal To‑Do</h1>
+          <div class="subtitle">A calm, focused list — your progress is saved locally.</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">🌙</button>
+          <div class="logo" aria-hidden="true">⚡</div>
+        </div>
+      </header>
+
+      <form id="addForm" onsubmit="return false;" aria-label="Add task">
+        <input id="taskInput" type="text" placeholder="Add a new task and press Enter" aria-label="Task description" />
+        <button class="add" id="addBtn" aria-label="Add task">Add</button>
+      </form>
+
+      <section class="list" id="taskList" aria-live="polite" aria-label="Tasks"></section>
+
+      <div class="footer">
+        <div><span class="count" id="count">0</span> tasks</div>
+        <div>
+          <button id="clearBtn" class="btn-circle" title="Clear all">Clear</button>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      (function(){
+        const STORAGE_KEY = 'todoList';
+        const THEME_KEY = 'theme';
+        const input = document.getElementById('taskInput');
+        const listEl = document.getElementById('taskList');
+        const addBtn = document.getElementById('addBtn');
+        const countEl = document.getElementById('count');
+        const clearBtn = document.getElementById('clearBtn');
+        const themeToggle = document.getElementById('themeToggle');
+
+        let tasks = [];
+
+        function save(){
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+        }
+
+        function load(){
+          try{
+            const raw = localStorage.getItem(STORAGE_KEY);
+            tasks = raw ? JSON.parse(raw) : [];
+          }catch(e){ tasks = [] }
+        }
+
+        function applyTheme(theme){
+          if(theme === 'light'){
+            document.documentElement.setAttribute('data-theme','light');
+            themeToggle.textContent = '☀️';
+            themeToggle.setAttribute('aria-label','Switch to dark theme');
+          }else{
+            document.documentElement.removeAttribute('data-theme');
+            themeToggle.textContent = '🌙';
+            themeToggle.setAttribute('aria-label','Switch to light theme');
+          }
+          try{ localStorage.setItem(THEME_KEY, theme); }catch(e){}
+        }
+
+        function render(){
+          listEl.innerHTML = '';
+          tasks.slice().reverse().forEach(t=>{
+            const li = document.createElement('div');
+            li.className = 'task';
+
+            const text = document.createElement('div');
+            text.className = 'text';
+            text.textContent = t.text;
+
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            const dt = new Date(t.createdAt);
+            meta.textContent = dt.toLocaleString();
+
+            const right = document.createElement('div');
+            right.style.display = 'flex';
+            right.style.alignItems = 'center';
+
+            const del = document.createElement('button');
+            del.className = 'btn-circle btn-delete';
+            del.title = 'Delete task';
+            del.setAttribute('aria-label','Delete task');
+            del.innerHTML = '🗑';
+            del.onclick = ()=>{ if(confirm('Delete this task?')) removeTask(t.id); };
+
+            right.appendChild(meta);
+            right.appendChild(del);
+
+            li.appendChild(text);
+            li.appendChild(right);
+            listEl.appendChild(li);
+          });
+          countEl.textContent = tasks.length;
+        }
+
+        function addTask(text){
+          const trimmed = (text||'').trim();
+          if(!trimmed) return;
+          const task = { id: Date.now(), text: trimmed, createdAt: Date.now() };
+          tasks.push(task);
+          save();
+          render();
+          input.value = '';
+          input.focus();
+        }
+
+        function removeTask(id){
+          tasks = tasks.filter(t=>t.id !== id);
+          save();
+          render();
+        }
+
+        themeToggle.addEventListener('click', ()=>{
+          const current = localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark';
+          applyTheme(current === 'light' ? 'dark' : 'light');
+        });
+
+        addBtn.addEventListener('click', ()=> addTask(input.value));
+        input.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ addTask(input.value); e.preventDefault(); } });
+        clearBtn.addEventListener('click', ()=>{
+          if(tasks.length && confirm('Clear all tasks?')){ tasks = []; save(); render(); }
+        });
+
+        // Init theme
+        (function(){
+          const saved = localStorage.getItem(THEME_KEY);
+          if(saved === 'light') applyTheme('light');
+          else if(saved === 'dark') applyTheme('dark');
+          else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) applyTheme('light');
+        })();
+
+        // Init data
+        load(); render();
+      })();
+    </script>
+  </body>
+</html>
