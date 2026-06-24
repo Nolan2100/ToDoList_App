@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Minimal To‑Do</title>
+    <title>To‑Do App</title>
     <style>
       :root{
         --bg: #0f1724;
@@ -21,7 +21,7 @@
         margin:0;
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
         background: linear-gradient(180deg,#071025 0%, #0b1220 100%);
-        color: #e6eef8;
+        color: #87baf8;
         display:flex;
         align-items:center;
         justify-content:center;
@@ -49,13 +49,14 @@
         --accent: #6b46ff;
         --accent-2: #0ea5a4;
         --glass: rgba(2,6,23,0.02);
-        color: #0b1220;
+        color: #1a5de4;
         --shadow: 0 8px 28px rgba(12,18,40,0.06);
       }
       [data-theme="light"] body{background: linear-gradient(180deg,#ffffff 0%, #f3f6fb 100%)}
       header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
       h1{font-size:20px;margin:0;letter-spacing:0.2px}
       .subtitle{color:var(--muted);font-size:13px}
+      .clock{color:var(--muted);font-size:13px;margin-right:8px}
       form{display:flex;gap:12px}
       input[type="text"]{
         flex:1;
@@ -69,7 +70,7 @@
       }
       input[type="text"]::placeholder{color:var(--muted)}
       button.add{
-        background: linear-gradient(180deg,var(--accent), #5b3bff);
+        background: linear-gradient(180deg,var(--accent), #7a69d1);
         color:white;
         border:none;
         padding:10px 16px;
@@ -102,10 +103,12 @@
     <main class="app" role="application" aria-labelledby="title">
       <header>
         <div>
-          <h1 id="title">Minimal To‑Do</h1>
-          <div class="subtitle">A calm, focused list — your progress is saved locally.</div>
+          <h1 id="title">To‑Do App</h1>
+          <div class="subtitle">A calm, focused list so you </div>
+          <div class="subtitle">can keep track of your day</div> 
         </div>
         <div style="display:flex;align-items:center;gap:8px">
+          <div id="clock" class="clock" aria-live="off">--</div>
           <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">🌙</button>
           <div class="logo" aria-hidden="true">⚡</div>
         </div>
@@ -136,6 +139,7 @@
         const countEl = document.getElementById('count');
         const clearBtn = document.getElementById('clearBtn');
         const themeToggle = document.getElementById('themeToggle');
+        const clockEl = document.getElementById('clock');
 
         let tasks = [];
 
@@ -198,6 +202,18 @@
           });
           countEl.textContent = tasks.length;
         }
+
+        function updateClock(){
+          if(!clockEl) return;
+          const now = new Date();
+          const date = now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+          const time = now.toLocaleTimeString();
+          clockEl.textContent = `${date} • ${time}`;
+        }
+
+        // update clock every second
+        setInterval(updateClock, 1000);
+        updateClock();
 
         function addTask(text){
           const trimmed = (text||'').trim();
